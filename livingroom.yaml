@@ -1,0 +1,75 @@
+esphome:
+  name: livingroom
+  includes:
+  - UartReadLineSensor.h
+
+esp32:
+  board: nodemcu-32s
+  framework:
+    type: arduino
+
+
+# Enable Home Assistant API
+api:
+  password: ""
+
+ota:
+  password: ""
+
+wifi:
+  ssid: "Home"
+  password: "96!Benvenuti"
+
+logger:
+  level: VERBOSE
+  baud_rate: 0 #disable logging over uart
+  logs:
+    mqtt.component: DEBUG
+    mqtt.client: ERROR
+
+web_server:
+  port: 80
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 256000
+  debug:
+    direction: BOTH
+    dummy_receiver: true
+    after:
+      delimiter: "\n"
+    sequence:
+      - lambda: UARTDebug::log_string(direction, bytes);
+
+
+text_sensor:
+  - platform: custom
+    lambda: |-
+      auto my_custom_sensor = new UartReadLineSensor(id(uart_bus));
+      App.register_component(my_custom_sensor);
+      return {my_custom_sensor};
+    text_sensors:
+      id: "uart_readline"
+
+switch:
+  - platform: template
+    name: "Switch"
+    lambda: |-
+      if (id(uart_readline).state == "*POW=ON#") {
+        return true;
+      } else if(id(uart_readline).state == "*POW=OFF#") {
+        return false;
+      } else {
+        return {};
+      }
+    turn_on_action:
+      - uart.write: "\r*pow=on#\r"
+    turn_off_action:
+      - uart.write: "\r*pow=off#\r"
+
+interval:
+  - interval: 10s
+    then:
+      - uart.write: [0x68, 0x05, 0x05, 0x68, 0x64, 0x01, 0xD2, 0x00, 0x00, 0x37, 0x16]
