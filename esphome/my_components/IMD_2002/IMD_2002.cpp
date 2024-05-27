@@ -9,36 +9,49 @@ namespace IMD_2002 {
 
 static const char *const TAG = "IMD_2002.sensor";
 
-void IMD_2002Component::loop() {
-  uint8_t data;
-  while (this->available() > 0) {
-    this->read_byte(&data);
-    if (this->buffer_.empty() && (data != 0xff))
-      continue;
-    buffer_.push_back(data);
-    if (this->buffer_.size() == 4)
-      this->check_buffer_();
-  }
-}
+void IMD_2002::setup() {}
 
-void IMD_2002Component::check_buffer_() {
-  uint8_t checksum = this->buffer_[0] + this->buffer_[1] + this->buffer_[2];
-  if (this->buffer_[3] == checksum) {
-    float distance = (this->buffer_[1] << 8) + this->buffer_[2];
-    if (distance > 280) {
-      float meters = distance / 1000.0;
-      ESP_LOGV(TAG, "Distance from sensor: %f mm, %f m", distance, meters);
-      this->publish_state(meters);
-    } else {
-      ESP_LOGW(TAG, "Invalid data read from sensor: %s", format_hex_pretty(this->buffer_).c_str());
+void IMD_2002::loop() {
+  // Read the sensor
+  const int max_line_length = 80;
+  static char buffer[max_line_length];
+  while (available()) {
+    if (readline(read(), buffer, max_line_length) > 0) {
+      publish_state(buffer);
     }
-  } else {
-    ESP_LOGW(TAG, "checksum failed: %02x != %02x", checksum, this->buffer_[3]);
+    // Evaluate the message
+
+    // Publish the state
+    if (this->state == true) {
+      this->publish_state(false);
+    } 
+    else {
+      this->publish_state(true);
+    }
   }
-  this->buffer_.clear();
 }
 
-void IMD_2002Component::dump_config() { LOG_SENSOR("", "IMD_2002 Sensor", this); }
+int IMD_2002::readline(int readch, char *buffer, int len) {
+  static int pos = 0;
+  int rpos;
 
+  if (readch > 0) {
+    switch (readch) {
+      case '\n':  // Ignore new-lines
+        break;
+      case '\r':  // Return on CR
+        rpos = pos;
+        pos = 0;  // Reset position index ready for next time
+        return rpos;
+      default:
+        if (pos < len - 1) {
+          buffer[pos++] = readch;
+          buffer[pos] = 0;
+        }
+    }
+  }
+  // No end of line has been found, so return -1.
+  return -1;
+}
 }  // namespace IMD_2002
 }  // namespace esphome

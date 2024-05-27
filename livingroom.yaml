@@ -1,7 +1,7 @@
 esphome:
   name: livingroom
-  includes:
-  - UartReadLineSensor.h
+  # includes:
+  # - UartReadLineSensor.h
 
 esp32:
   board: nodemcu-32s
@@ -43,31 +43,33 @@ uart:
     sequence:
       - lambda: UARTDebug::log_string(direction, bytes);
 
+external_components:
+  - source: 
+      type: local
+      path: esphome/my_components
 
-text_sensor:
-  - platform: custom
-    lambda: |-
-      auto my_custom_sensor = new UartReadLineSensor(id(uart_bus));
-      App.register_component(my_custom_sensor);
-      return {my_custom_sensor};
-    text_sensors:
-      id: "uart_readline"
+# text_sensor:
+  
 
-switch:
-  - platform: template
-    name: "Switch"
-    lambda: |-
-      if (id(uart_readline).state == "*POW=ON#") {
-        return true;
-      } else if(id(uart_readline).state == "*POW=OFF#") {
-        return false;
-      } else {
-        return {};
-      }
-    turn_on_action:
-      - uart.write: "\r*pow=on#\r"
-    turn_off_action:
-      - uart.write: "\r*pow=off#\r"
+# IMD_2002:
+#   id: "rad_sens"
+  # uart_id: uart_bus
+
+binary_sensor:
+  - platform: IMD_2002
+    name: "Presence"
+
+# switch:
+#   - platform: template
+#     name: "Switch"
+#     lambda: |-
+#       if (id(uart_readline).state == "*POW=ON#") {
+#         return true;
+#       } else if(id(uart_readline).state == "*POW=OFF#") {
+#         return false;
+#       } else {
+#         return {};
+#       }
 
 interval:
   - interval: 10s
