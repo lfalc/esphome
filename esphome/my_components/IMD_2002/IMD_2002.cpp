@@ -68,12 +68,6 @@ typedef struct {
 namespace esphome {
 namespace IMD_2002 {
 
-/**
- * @brief Setup method for IMD_2002 sensor.
- * 
- * This method is called once during the setup phase of the sensor.
- * It sends commands to the sensor to get the serial number and start acquisition.
- */
 void IMD_2002::setup() {
   // Get the serial number
   const uint8_t GET_SERIAL[] = {0x68, 0x05, 0x05, 0x68, 0x64, 0x01, 0xD2, 0x00, 0x00, 0x37, 0x16};
@@ -84,12 +78,6 @@ void IMD_2002::setup() {
   this->write_array(START_ACQUISITION, sizeof(START_ACQUISITION));
 }
 
-/**
- * @brief Loop method for IMD_2002 component.
- * 
- * This method is called repeatedly and automatically.
- * It reads data from the sensor via UART and stores it in a buffer.
- */
 void IMD_2002::loop() {
   while (this->available() > 0) {
     uint8_t data;
@@ -106,13 +94,6 @@ void IMD_2002::loop() {
   }
 }
 
-/**
- * @brief Update method for IMD_2002 sensor.
- * 
- * This method is inherited from the PollingComponent class and is called automatically at the specified
- * interval defined in the configuration file ("example.yaml").
- * It sends a command to read the target list, publishes a random state, and clears the buffer.
- */
 void IMD_2002::update() {
   // Read target list 68 03 03 68 64 01 DA 3F 16
   const uint8_t READ_TARGET_LIST[] = {0x68, 0x03, 0x03, 0x68, 0x64, 0x01, 0xDA, 0x3F, 0x16};
