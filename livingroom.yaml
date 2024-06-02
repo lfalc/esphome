@@ -48,16 +48,11 @@ external_components:
       type: local
       path: esphome/my_components
 
-# text_sensor:
-  
-
-# IMD_2002:
-#   id: "rad_sens"
-  # uart_id: uart_bus
-
-binary_sensor:
+sensor:
   - platform: IMD_2002
     name: "Presence"
+    update_interval: 10s
+
 
 # switch:
 #   - platform: template
@@ -71,7 +66,7 @@ binary_sensor:
 #         return {};
 #       }
 
-interval:
-  - interval: 10s
-    then:
-      - uart.write: [0x68, 0x05, 0x05, 0x68, 0x64, 0x01, 0xD2, 0x00, 0x00, 0x37, 0x16]
+# interval:
+  # - interval: 10s
+  #   then:
+  #     - uart.write: [0x68, 0x05, 0x05, 0x68, 0x64, 0x01, 0xD2, 0x00, 0x00, 0x37, 0x16]
