@@ -43,7 +43,7 @@ class IMD_2002 : public sensor::Sensor, public PollingComponent, public uart::UA
   // void dump_config() override;
 
   // custom methods
-  int read_frame(int readch, char *buffer, int len);
+  void eval_frame(uint8_t *buffer);
 
  protected:
   std::vector<uint8_t> buffer_;

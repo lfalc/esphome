@@ -2,71 +2,15 @@
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #include <cstdlib>
-#include <string.h>
+#include <stdint.h>
 #include "InnoSenT.h"
 
 #define IMD2002_MAX_TARGETS (15)
 
-typedef unsigned char uint8_t;
-typedef unsigned int uint16_t;
-typedef int sint16_t;
-typedef unsigned long uint32_t;
-typedef long sint32_t;
-typedef float float32_t;
-
-typedef enum {
-  IMD2002_API_ERR_OK = 0x0000,
-  IMD2002_API_ERR_FUNCTION_DEPRECATED,
-  IMD2002_API_ERR_DLL_NOT_FINISHED,
-  IMD2002_API_ERR_HANDLE_NOT_INITIALIZED,
-  IMD2002_API_ERR_COMPORT_DOESNT_EXIST,
-  IMD2002_API_ERR_COMPORT_CANT_INITIALIZE,
-  IMD2002_API_ERR_COMPORT_ACCESS_DENIED,
-  IMD2002_API_ERR_COMPORT_BAUDRATE_NOT_VALID,
-  IMD2002_API_ERR_COMPORT_CANT_OPEN,
-  IMD2002_API_ERR_COMPORT_CANT_SET_FLOW_CONTROL,
-  IMD2002_API_ERR_COMPORT_CANT_SET_PARITY,
-  IMD2002_API_ERR_COMPORT_CANT_SET_STOP_BITS,
-  IMD2002_API_ERR_COMPORT_CANT_SET_DATA_BITS,
-  IMD2002_API_ERR_COMPORT_CANT_SET_BAUDRATE,
-  IMD2002_API_ERR_COMPORT_ALREADY_INITIALIZED,
-  IMD2002_API_ERR_COMPORT_EQUALS_NULL,
-  IMD2002_API_ERR_COMPORT_NOT_OPEN,
-  IMD2002_API_ERR_COMPORT_NOT_READABLE,
-  IMD2002_API_ERR_COMPORT_NOT_WRITEABLE,
-  IMD2002_API_ERR_COMPORT_CANT_WRITE,
-  IMD2002_API_ERR_COMPORT_CANT_READ,
-  IMD2002_API_ERR_COMMAND_NOT_WRITTEN,
-  IMD2002_API_ERR_COMMAND_NOT_READ,
-  IMD2002_API_ERR_COMMAND_NO_DATA_RECEIVED,
-  IMD2002_API_ERR_COMMAND_NO_VALID_FRAME_FOUND,
-  IMD2002_API_ERR_COMMAND_RX_FRAME_DAMAGED,
-  IMD2002_API_ERR_COMMAND_FAILURE,
-  IMD2002_API_ERR_UNDEFINED_READ,
-  IMD2002_API_ERR_COMPORT_LESS_DATA_READ,
-  IMD2002_API_ERR_COMPORT_SYSTEM_INIT_FAILED,
-  IMD2002_API_ERR_COMPORT_SYSTEM_ALREADY_INITIALIZED,
-  IMD2002_API_ERR_COMMAND_RX_FRAME_LENGTH,
-  IMD2002_API_ERR_COMMAND_MAX_DATA_OVERFLOW,
-  IMD2002_API_ERR_COMMAND_MAX_IQPAIRS_OVERFLOW,
-  IMD2002_API_ERR_COMMAND_NOT_ACCEPTED,
-  IMD2002_API_ERR_NULL_POINTER,
-  IMD2002_API_ERR_PARAMETER_OUT_OF_RANGE,
-  IMD2002_API_ERR_COMMAND_UNEXPECTED_FRAMETYPE,
-  IMD2002_API_ERR_COMMAND_WITH_FAILURE_CODE
-} IMD2002_Result_t;
-
-typedef struct {
-  uint16_t ui16_nrOfTargets;
-  uint16_t ui16_targetListId;
-  uint8_t ui8_blockageDetected;
-  uint8_t ui8_blockageLevel;
-  uint16_t ui16_reserved2;
-  IMD2002_Target_t target[IMD2002_MAX_TARGETS];
-} IMD2002_TargetList_t;
-
 namespace esphome {
 namespace IMD_2002 {
+
+static const char *TAG = "IMD_2002";
 
 void IMD_2002::setup() {
   // Get the serial number
@@ -96,34 +40,38 @@ void IMD_2002::loop() {
 
 void IMD_2002::update() {
   // Read target list 68 03 03 68 64 01 DA 3F 16
+  ESP_LOGV(TAG, "Reading target list");
   const uint8_t READ_TARGET_LIST[] = {0x68, 0x03, 0x03, 0x68, 0x64, 0x01, 0xDA, 0x3F, 0x16};
   this->write_array(READ_TARGET_LIST, sizeof(READ_TARGET_LIST));
 
+  // Evaluate the frame in the buffer
+  ESP_LOGV(TAG, "Evaluating frame");
+  eval_frame(this->buffer_.data());
+
   // publish state
+  ESP_LOGV(TAG, "Publishing state");
   this->publish_state(std::rand() % 1000 / 1000.0f);
 
   // Free the buffer
+  ESP_LOGV(TAG, "Clearing buffer");
   this->buffer_.clear();
 }
 
-void IMD_2002::read_frame(int readch, char *buffer, int len) {
-  // Read the sensor
-  // const int max_line_length = 80;
-  // static char buffer[max_line_length];
+void IMD_2002::eval_frame(uint8_t *data_frame) {
+  static const char *TAG = "IMD_2002::eval_frame";
+  IMD2002_Result_t result;
+  IMD2002_TargetList_t targetList;
 
-  // while (available()) {
-  //   if (readline(read(), buffer, max_line_length) > 0) {
-  //     publish_state(buffer);
-  //   }
-  // Evaluate the message
+  ESP_LOGV(TAG, "data_frame: %x", data_frame);
 
-  // Publish the state
-  // if (this->state == true) {
-  //   this->publish_state(false);
-  // } else {
-  //   this->publish_state(true);
-  // }
-  return -1;
+  result = IMD2002_decodeTargetFrame(data_frame, &targetList);
+
+  if (result != IMD2002_API_ERR_OK) {
+    ESP_LOGE(TAG, "Error decoding target frame: %d", result);
+    return;
+  } else {
+    ESP_LOGV(TAG, "Decoded target frame: %d", result);
+  }
 }
 
 }  // namespace IMD_2002
