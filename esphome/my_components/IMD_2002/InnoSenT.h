@@ -1,6 +1,6 @@
 #pragma once
 
-#define IMD2002_MAX_TARGETS (15)
+#define IMD2002_MAX_TARGETS (3)
 
 namespace esphome {
 namespace IMD_2002 {

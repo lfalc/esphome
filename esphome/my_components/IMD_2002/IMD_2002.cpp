@@ -5,8 +5,6 @@
 #include <stdint.h>
 #include "InnoSenT.h"
 
-#define IMD2002_MAX_TARGETS (15)
-
 namespace esphome {
 namespace IMD_2002 {
 
@@ -23,46 +21,47 @@ void IMD_2002::setup() {
 }
 
 void IMD_2002::loop() {
-  while (this->available() > 0) {
-    uint8_t data;
-    this->read_byte(&data);
+  while (this->available()) {
+    uint8_t val;
+    this->read_byte(&val);
+    // ESP_LOGV(TAG, "Read byte: %d", val);  // Log the read byte
+    this->buffer_.push_back(val);
+    if (val == 0x16) {
+      // ESP_LOGV(TAG, "data_frame end detected");
+      buffer_.push_back('\0');
+      // ESP_LOGV(TAG, "buffer content: %s", (reinterpret_cast<const char *>(this->buffer_.data())));
 
-    // ESP_LOGV(TAG, "Read byte from sensor: %x", data);
-
-    if (this->buffer_.empty())
-      continue;
-
-    this->buffer_.push_back(data);
-    // if (this->buffer_.size() == 4)
-    //   this->check_buffer_();
+      std::copy(this->buffer_.begin(), this->buffer_.end(), data_frame);
+      this->buffer_.clear();
+      break;
+    }
   }
 }
 
 void IMD_2002::update() {
+  ESP_LOGV(TAG, "data_frame content: %s", data_frame);
+
   // Read target list 68 03 03 68 64 01 DA 3F 16
   ESP_LOGV(TAG, "Reading target list");
   const uint8_t READ_TARGET_LIST[] = {0x68, 0x03, 0x03, 0x68, 0x64, 0x01, 0xDA, 0x3F, 0x16};
   this->write_array(READ_TARGET_LIST, sizeof(READ_TARGET_LIST));
 
   // Evaluate the frame in the buffer
-  ESP_LOGV(TAG, "Evaluating frame");
-  eval_frame(this->buffer_.data());
+  // ESP_LOGV(TAG, "Evaluating frame");
+  eval_frame(this->data_frame);
 
   // publish state
-  ESP_LOGV(TAG, "Publishing state");
+  // ESP_LOGV(TAG, "Publishing state");
   this->publish_state(std::rand() % 1000 / 1000.0f);
-
-  // Free the buffer
-  ESP_LOGV(TAG, "Clearing buffer");
-  this->buffer_.clear();
 }
 
-void IMD_2002::eval_frame(uint8_t *data_frame) {
+void IMD_2002::eval_frame(unsigned char *data_frame) {
   static const char *TAG = "IMD_2002::eval_frame";
   IMD2002_Result_t result;
   IMD2002_TargetList_t targetList;
 
-  ESP_LOGV(TAG, "data_frame: %x", data_frame);
+  data_frame[255] = '\0';
+  ESP_LOGV(TAG, "data_frame content: %s", data_frame);
 
   result = IMD2002_decodeTargetFrame(data_frame, &targetList);
 
@@ -70,7 +69,11 @@ void IMD_2002::eval_frame(uint8_t *data_frame) {
     ESP_LOGE(TAG, "Error decoding target frame: %d", result);
     return;
   } else {
-    ESP_LOGV(TAG, "Decoded target frame: %d", result);
+    ESP_LOGV(TAG, "ui16_nrOfTargets: %d", targetList.ui16_nrOfTargets);
+    ESP_LOGV(TAG, "ui16_targetListId: %d", targetList.ui16_targetListId);
+    ESP_LOGV(TAG, "ui8_blockageDetected: %d", targetList.ui8_blockageDetected);
+    ESP_LOGV(TAG, "ui8_blockageLevel: %d", targetList.ui8_blockageLevel);
+    ESP_LOGV(TAG, "ui16_reserved2: %d", targetList.ui16_reserved2);
   }
 }
 

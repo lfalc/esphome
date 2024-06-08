@@ -49,6 +49,7 @@ class IMD_2002 : public sensor::Sensor, public PollingComponent, public uart::UA
   std::vector<uint8_t> buffer_;
 
  private:
+  unsigned char data_frame[512];
 };
 
 }  // namespace IMD_2002
