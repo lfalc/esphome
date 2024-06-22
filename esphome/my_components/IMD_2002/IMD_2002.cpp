@@ -52,7 +52,7 @@ void IMD_2002::update() {
 
   // publish state
   // ESP_LOGV(TAG, "Publishing state");
-  this->publish_state(std::rand() % 1000 / 1000.0f);
+  // this->publish_state(std::rand() % 1000 / 1000.0f);
 }
 
 void IMD_2002::eval_frame(unsigned char *data_frame) {
@@ -60,8 +60,8 @@ void IMD_2002::eval_frame(unsigned char *data_frame) {
   IMD2002_Result_t result;
   IMD2002_TargetList_t targetList;
 
-  data_frame[255] = '\0';
-  ESP_LOGV(TAG, "data_frame content: %s", data_frame);
+  // data_frame[255] = '\0';
+  // ESP_LOGV(TAG, "data_frame content: %s", data_frame);
 
   result = IMD2002_decodeTargetFrame(data_frame, &targetList);
 
@@ -74,6 +74,20 @@ void IMD_2002::eval_frame(unsigned char *data_frame) {
     ESP_LOGV(TAG, "ui8_blockageDetected: %d", targetList.ui8_blockageDetected);
     ESP_LOGV(TAG, "ui8_blockageLevel: %d", targetList.ui8_blockageLevel);
     ESP_LOGV(TAG, "ui16_reserved2: %d", targetList.ui16_reserved2);
+
+    if (targetList.ui16_nrOfTargets > 0) {
+      float f32_strongest_signal_dB = -100.0f;
+      for (uint16_t i = 0; i < targetList.ui16_nrOfTargets; i++) {
+        if (targetList.target[i].f32_signal_dB > f32_strongest_signal_dB) {
+          f32_strongest_signal_dB = targetList.target[i].f32_signal_dB;
+        }
+      }
+      ESP_LOGV(TAG, "Strongest signal: %f dB", f32_strongest_signal_dB);
+      this->publish_state(f32_strongest_signal_dB);
+    } else {
+      ESP_LOGV(TAG, "No targets detected");
+      this->publish_state(NAN);
+    }
   }
 }
 

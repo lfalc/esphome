@@ -52,6 +52,8 @@ sensor:
   - platform: IMD_2002
     name: "Presence"
     update_interval: 1s
+    id: presence
+    unit_of_measurement: "dB"
 
 
 # switch:
